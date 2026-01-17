@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Contract - CMP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: '#2563eb',
+                        brandDark: '#1e40af',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-gray-50 text-slate-800 font-sans min-h-screen flex flex-col">
+
+    <nav class="bg-white border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <a href="/" class="flex-shrink-0 flex items-center text-brand font-bold text-2xl">CMP</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="flex-grow flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-lg border border-gray-100">
+            <div>
+                <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                    Start a New Contract
+                </h2>
+                <p class="mt-2 text-center text-sm text-gray-600">
+                    Select a blueprint to generate a contract from.
+                </p>
+            </div>
+
+            <div class="mt-8 space-y-6">
+                <div>
+                    <label for="blueprint" class="block text-sm font-medium text-gray-700">Select Blueprint</label>
+                    <div class="mt-1">
+                        <select id="blueprint-select" name="blueprint"
+                            class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-brand focus:border-brand sm:text-sm rounded-md border">
+                            <option value="">Loading blueprints...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Hardcoded user selection for MVP since no full auth frontend flow exists yet -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Assign to User (Mock)</label>
+                    <input type="number" id="user-id" value="1"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand focus:ring-brand sm:text-sm border p-2"
+                        readonly title="Using User ID 1 for MVP">
+                </div>
+
+                <div>
+                    <button onclick="createContract()"
+                        class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-brand hover:bg-brandDark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand transition-all shadow-md hover:shadow-lg">
+                        Create Contract
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load blueprints
+        async function loadBlueprints() {
+            const select = document.getElementById('blueprint-select');
+            try {
+                const res = await fetch('/api/blueprints/');
+                const blueprints = await res.json();
+
+                select.innerHTML = '<option value="">Select a template...</option>';
+                blueprints.forEach(bp => {
+                    const opt = document.createElement('option');
+                    opt.value = bp.id;
+                    opt.textContent = bp.title;
+                    select.appendChild(opt);
+                });
+            } catch (err) {
+                select.innerHTML = '<option>Error loading blueprints</option>';
+            }
+        }
+
+        async function createContract() {
+            const bpId = document.getElementById('blueprint-select').value;
+            const userId = document.getElementById('user-id').value; // Hardcoded 1
+
+            if (!bpId) return alert("Please select a blueprint");
+
+            try {
+                // Ensure a user exists first - in MVP manual verification we will create superuser
+                const res = await fetch('/api/contracts/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ blueprint_id: parseInt(bpId), user_id: parseInt(userId) })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    window.location.href = `/contract-detail?id=${data.id}`;
+                } else {
+                    const err = await res.json();
+                    alert('Error: ' + (err.detail || 'Could not create contract'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Network error');
+            }
+        }
+
+        loadBlueprints();
+    </script>
+</body>
+
+</html>

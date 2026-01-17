@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contract Detail - CMP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: '#2563eb',
+                        brandDark: '#1e40af',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .A4-page {
+            width: 794px;
+            /* A4 width */
+            min-height: 1123px;
+            /* A4 height */
+            background: white;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            margin: 0 auto;
+            position: relative;
+            padding: 40px;
+        }
+
+        .field-overlay {
+            position: absolute;
+            z-index: 10;
+        }
+
+        .field-overlay input {
+            background: transparent;
+            min-width: 150px;
+            border: none;
+            border-bottom: 2px solid #ccc;
+            /* Thicker underline */
+            font-family: monospace;
+            font-size: 14px;
+            padding: 2px 0;
+        }
+
+        .field-overlay input[type="checkbox"] {
+            min-width: unset;
+        }
+
+        .field-overlay input:focus {
+            outline: none;
+            border-bottom: 2px solid #2563eb;
+            background: rgba(255, 255, 0, 0.1);
+        }
+
+        .contract-body {
+            font-family: serif;
+            font-size: 16px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            margin-bottom: 40px;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 text-slate-800 font-sans min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-white shadow z-10 sticky top-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+                <a href="/" class="text-gray-400 hover:text-gray-600">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                </a>
+                <h1 id="contract-title" class="text-2xl font-bold text-gray-900">Loading...</h1>
+                <span id="contract-status"
+                    class="px-3 py-1 rounded-full text-sm font-medium bg-gray-200 text-gray-800">...</span>
+            </div>
+
+            <div class="flex space-x-3">
+                <div id="lifecycle-actions">
+                    <!-- Buttons injected via JS -->
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex-grow flex justify-center p-8 overflow-auto">
+        <div id="contract-preview" class="A4-page">
+            <div class="mb-8 border-b pb-4">
+                <h2 class="text-3xl font-serif text-center mb-2" id="doc-title">Contract Agreement</h2>
+            </div>
+
+            <div id="contract-body" class="contract-body">
+                <!-- Body text injected here -->
+            </div>
+
+            <!-- Fields will be absolutely positioned here relative to page -->
+            <div id="fields-container" class="absolute top-0 left-0 w-full h-full pointer-events-none">
+                <!-- Pointer events none wrapper so clicks fall through to text, but children have auto -->
+                <!-- Fields injected -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Instructions / Sidebar -->
+    <div class="fixed right-8 bottom-8 bg-white p-4 rounded-lg shadow-xl border border-gray-200 w-64">
+        <h3 class="font-medium text-gray-900 mb-2">Instructions</h3>
+        <p class="text-sm text-gray-600 mb-2">
+            Fill in the fields on the document. Save changes before moving to next status.
+        </p>
+        <button onclick="saveFields()" class="w-full bg-gray-800 text-white py-2 rounded text-sm hover:bg-gray-700">Save
+            Changes</button>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const contractId = urlParams.get('id');
+        let currentContract = null;
+
+        if (!contractId) {
+            alert("No contract ID provided");
+            window.location.href = '/';
+        }
+
+        async function loadContract() {
+            try {
+                const res = await fetch(`/api/contracts/${contractId}`);
+                if (!res.ok) throw new Error("Failed to load");
+                currentContract = await res.json();
+                renderContract(currentContract);
+            } catch (err) {
+                console.error(err);
+                alert("Error loading contract details");
+            }
+        }
+
+        function renderContract(c) {
+            document.getElementById('contract-title').textContent = `Contract #${c.id} - ${c.blueprint_title}`;
+            document.title = `${c.blueprint_title} - #${c.id}`;
+            document.getElementById('doc-title').textContent = c.blueprint_title;
+
+            if (c.body_text) {
+                document.getElementById('contract-body').textContent = c.body_text;
+            } else {
+                document.getElementById('contract-body').innerHTML = '<em class="text-gray-400">No content provided in blueprint.</em>';
+            }
+
+            // Status Badge
+            const badge = document.getElementById('contract-status');
+            badge.textContent = c.status;
+
+            // Basic color logic
+            if (c.status === 'APPROVED' || c.status === 'SIGNED') badge.className = "px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800";
+            else if (c.status === 'REVOKED') badge.className = "px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800";
+            else badge.className = "px-3 py-1 rounded-full text-sm font-medium bg-gray-200 text-gray-800";
+
+            renderLifecycleButtons(c.status);
+            renderFields(c);
+        }
+
+        function renderFields(c) {
+            const container = document.getElementById('fields-container');
+            container.innerHTML = '';
+
+            c.fields.forEach(f => {
+                const x = f.pos_x || 60;
+                const y = f.pos_y || 200;
+
+                const el = document.createElement('div');
+                el.className = 'field-overlay pointer-events-auto'; // Enable interactions
+                el.style.left = x + 'px';
+                el.style.top = y + 'px';
+
+                let inputHtml = '';
+                const isReadOnly = (c.status === 'LOCKED' || c.status === 'REVOKED');
+
+                if (f.field_type === 'checkbox') {
+                    inputHtml = `<label class="flex items-center space-x-2"><input type="checkbox" ${f.value === 'true' ? 'checked' : ''} ${isReadOnly ? 'disabled' : ''} class="field-value" data-label="${f.label}"><span class="text-sm text-gray-600">${f.label}</span></label>`;
+                } else {
+                    inputHtml = `
+                        <label class="block text-xs text-gray-500 mb-1">${f.label}</label>
+                        <input type="text" value="${f.value || ''}" ${isReadOnly ? 'disabled' : ''} class="field-value" data-label="${f.label}" placeholder="...">
+                    `;
+                }
+
+                el.innerHTML = inputHtml;
+                container.appendChild(el);
+            });
+        }
+
+        function renderLifecycleButtons(status) {
+            const container = document.getElementById('lifecycle-actions');
+            container.innerHTML = '';
+
+            const actions = [];
+
+            if (status === 'CREATED') {
+                actions.push({ label: 'Approve', action: 'APPROVED', color: 'bg-green-600 hover:bg-green-700' });
+                actions.push({ label: 'Revoke', action: 'REVOKED', color: 'bg-red-600 hover:bg-red-700' });
+            } else if (status === 'APPROVED') {
+                actions.push({ label: 'Send to Client', action: 'SENT', color: 'bg-blue-600 hover:bg-blue-700' });
+            } else if (status === 'SENT') {
+                actions.push({ label: 'Mark Signed', action: 'SIGNED', color: 'bg-indigo-600 hover:bg-indigo-700' });
+                actions.push({ label: 'Revoke', action: 'REVOKED', color: 'bg-red-600 hover:bg-red-700' });
+            } else if (status === 'SIGNED') {
+                actions.push({ label: 'Lock Contract', action: 'LOCKED', color: 'bg-gray-800 hover:bg-gray-900' });
+            }
+
+            actions.forEach(btn => {
+                const b = document.createElement('button');
+                b.className = `${btn.color} text-white px-4 py-2 rounded shadow-sm text-sm font-medium transition ml-2`;
+                b.textContent = btn.label;
+                b.onclick = () => transitionStatus(btn.action);
+                container.appendChild(b);
+            });
+        }
+
+        async function transitionStatus(newStatus) {
+            if (!confirm(`Are you sure you want to change status to ${newStatus}?`)) return;
+
+            try {
+                const res = await fetch(`/api/contracts/${contractId}/transition`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ new_status: newStatus, user_id: 1 })
+                });
+
+                if (res.ok) {
+                    location.reload();
+                } else {
+                    const err = await res.json();
+                    alert(err.detail || "Action failed");
+                }
+            } catch (e) {
+                alert("Error transitioning status");
+            }
+        }
+
+        async function saveFields() {
+            const inputs = document.querySelectorAll('.field-value');
+            const values = [];
+            inputs.forEach(inp => {
+                let val = inp.value;
+                if (inp.type === 'checkbox') val = inp.checked ? 'true' : 'false';
+                values.push({
+                    field_label: inp.getAttribute('data-label'),
+                    value: val
+                });
+            });
+
+            try {
+                const res = await fetch(`/api/contracts/${contractId}/fields`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ values: values })
+                });
+
+                if (res.ok) {
+                    alert("Changes saved");
+                } else {
+                    alert("Error saving fields");
+                }
+            } catch (e) {
+                alert("Network error");
+            }
+        }
+
+        loadContract();
+    </script>
+</body>
+
+</html>
