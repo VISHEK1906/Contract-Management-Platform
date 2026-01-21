@@ -1,11 +1,13 @@
 # Contract Management Platform (CMP)
 
+**Live Demo:** [https://contractmanagementplatform.onrender.com](https://contractmanagementplatform.onrender.com)
+
 A production-ready full-stack Contract Management Platform that enables organizations to create reusable contract blueprints, manage contract lifecycles, and track status via a dashboard.
 
 ## 🚀 Features
 
 *   **Blueprint Creation**: Visual drag-and-drop interface to design contract templates with text, date, signature, and checkbox fields.
-*   **Contract Generation**: innovative instantiation of contracts from blueprints.
+*   **Contract Generation**: Innovative instantiation of contracts from blueprints.
 *   **Lifecycle Management**: Strict enforcement of contract states: Created → Approved → Sent → Signed → Locked (or Revoked).
 *   **Dashboard**: Real-time overview of all contracts with status filtering.
 *   **Audit Trail**: Tracks status changes and users involved.
@@ -19,20 +21,16 @@ A production-ready full-stack Contract Management Platform that enables organiza
 ## 📂 Project Structure
 
 ```
-/backend
+/
+    /api              # FastAPI routers (Business Logic)
     /cmp_project      # Django settings & configuration
     /core             # Django models & migrations
-    /api              # FastAPI routers (Business Logic)
+    /static           # Frontend HTML/JS/CSS Assets
     main.py           # FastAPI entry point
     manage.py         # Django management script
-
-/frontend
-    index.html             # Dashboard
-    create_blueprint.html  # Visual Template Editor
-    create_contract.html   # Contract generation
-    contract_detail.html   # Contract viewing & lifecycle actions
+    init_db_compat.py # Database initialization script
+    reset_db.py       # Database reset script
 ```
-
 
 ## ⚙️ Setup Instructions
 
@@ -41,46 +39,45 @@ A production-ready full-stack Contract Management Platform that enables organiza
 *   MySQL Server
 
 ### 2. Quick Start
-1. **Configure Environment Variables**:
-*   Navigate to the backend directory.
-*   Create a .env file in the root of the backend folder.
-*   Add the following environment variables to the .env file:
+
+1.  **Clone the Repository** (if applicable)
+
+2.  **Configure Environment Variables**:
+    *   Create a `.env` file in the root directory.
+    *   Add the following environment variables:
+        ```bash
+        DB_NAME=your_db_name
+        DB_USER=your_db_user
+        DB_PASSWORD=your_db_password
+        DB_HOST=localhost
+        DB_PORT=3306
+        SECRET_KEY=your_secret_key
+        DEBUG=True
+        ALLOWED_HOSTS=localhost,127.0.0.1
+        ```
+
+3.  **Install Dependencies**:
     ```bash
-    DB_NAME=
-    DB_USER=
-    DB_PASSWORD=
-    DB_HOST=
-    DB_PORT=
-    SECRET_KEY=
-    DEBUG=
-    ALLOWED_HOSTS=
+    python -m venv venv
+    # Activate virtual environment:
+    # Windows: .\venv\Scripts\activate
+    # Linux/Mac: source venv/bin/activate
+    pip install -r requirements.txt
     ```
-*   The values for DB_NAME, DB_HOST, DB_PORT, and SECRET_KEY should be taken from the project’s settings.py file.
-*   Update DB_USER and DB_PASSWORD with your MySQL database credentials.
-*   Set DEBUG=True for development and DEBUG=False for production.
-*   Provide allowed domains or IPs in ALLOWED_HOSTS (comma-separated).
-*   Initialize Database (if not already done):
-     ```bash
-     cd backend
-     python init_db_compat.py
-     python manage.py migrate --fake-initial
-     cd ..
-     ```
 
-2.  **Run the Application**:
-    Simply execute the run script from the root directory:
-    ```powershell
-    .\run_app.ps1
+4.  **Initialize Database**:
+    ```bash
+    python init_db_compat.py
+    python manage.py migrate --fake-initial
     ```
-    *Tip: If you see a security error, try running this instead:*
-    ```powershell
-    powershell -ExecutionPolicy Bypass -File .\run_app.ps1
-    ```
-    The application will automatically activate the virtual environment (if present in `venv`) and start the server.
 
-3.  **Access the Dashboard**:
-    Open `http://localhost:8000` in your web browser. 
-    (Note: The frontend is now served directly by the backend).
+5.  **Run the Application**:
+    ```bash
+    uvicorn main:app --reload
+    ```
+
+6.  **Access the Dashboard**:
+    Open `http://localhost:8000` in your web browser.
 
 ## 🏗 Architecture Decisions
 
