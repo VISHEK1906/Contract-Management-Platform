@@ -4,3 +4,4 @@ uvicorn[standard]
 mysqlclient
 python-dotenv
 gunicorn
+pymysql
